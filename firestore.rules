@@ -1,0 +1,157 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isSignedIn() { return request.auth != null; }
+    function isAuthenticated() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function role() { return userData().role; }
+    function userOrgId() { return userData().orgId; }
+    function isAdmin() { return isAuthenticated() && role() == 'admin'; }
+    function isManager() { return isAuthenticated() && role() == 'manager'; }
+    function isMember() { return isAuthenticated() && (role() == 'member' || role() == 'manager' || role() == 'admin'); }
+    function isManagerOf(oid) { return isAuthenticated() && userOrgId() == oid && (role() == 'manager' || role() == 'admin'); }
+    function isMemberOf(oid) { return isAuthenticated() && (userOrgId() == oid || role() == 'admin'); }
+    function canManageReservationData(data) {
+      return isAuthenticated()
+             && (data.creatorUid == request.auth.uid
+                 || isManagerOf(data.orgId)
+                 || isAdmin());
+    }
+
+    /* organizations — 9개 기본 시드 + 사용자 추가 단체
+     * read: 누구나(인증된 익명 포함) — picker 표시용
+     * create: admin만
+     * update: admin만 (기본 단체의 컬러 변경 금지는 클라이언트+로직에서)
+     * delete: admin + isDefault!=true */
+    match /organizations/{orgId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin()
+                    && request.resource.data.keys().hasAll(['name', 'color', 'lightColor']);
+      allow update: if isAdmin()
+                    && (resource.data.isDefault != true
+                        || (request.resource.data.color == resource.data.color
+                            && request.resource.data.lightColor == resource.data.lightColor));
+      allow delete: if isAdmin() && resource.data.isDefault != true;
+    }
+
+    /* users — 사용자 프로필 + 권한 (코코 보안 정밀화)
+     * read: 인증된 사용자 누구나 (매니저가 자기 단체 멤버 봐야 함)
+     * create: 본인 uid + role은 pending 또는 admin(INITIAL_ADMIN_EMAIL 매칭)
+     * update: 권한 상승 차단을 위해 세 갈래로 명확 분리
+     *   ① 본인: displayName / position / photoURL / updatedAt 등 안전 필드만
+     *   ② admin: 모든 필드 변경 가능
+     *   ③ manager: 같은 단체 멤버에 한해 일부 필드, 단 admin으로 승격 금지
+     * delete: admin */
+    function userImmutableFields() {
+      return ['email', 'role', 'orgId', 'approvedBy', 'approvedAt',
+              'minutesAccess', 'minutesAccessUpdatedAt', 'minutesAccessBy',
+              'deletedAt', 'joinedAt'];
+    }
+    function safeSelfUpdate() {
+      // 본인이 변경하려는 필드가 위 보호 필드를 하나라도 건드리면 거부
+      return !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(userImmutableFields());
+    }
+    function managerSafeUpdate() {
+      // 매니저는 minutesAccess/email 보호 + role을 admin으로 승격 금지
+      return !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['email', 'minutesAccess', 'minutesAccessUpdatedAt', 'minutesAccessBy'])
+             && (
+               !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
+               || request.resource.data.role in ['member', 'manager', 'pending']
+             );
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.email == request.auth.token.email
+                    && (request.resource.data.role == 'pending'
+                        || (request.resource.data.role == 'admin'
+                            && request.auth.token.email == 'ttong627@gmail.com'));
+      allow update: if isSignedIn() && (
+                      // ① 본인 update — 권한 관련 필드는 절대 못 건드림 (자기 권한 상승 차단)
+                      (request.auth.uid == uid && safeSelfUpdate())
+                      // ② admin은 전권
+                      || isAdmin()
+                      // ③ 매니저는 같은 단체 멤버에 한해 + admin 승격 금지
+                      || (isManager()
+                          && userOrgId() == resource.data.orgId
+                          && managerSafeUpdate())
+                    );
+      allow delete: if isAdmin();
+    }
+
+    /* reservations — 예약
+     * read: 누구나 인증 (캘린더 전체 표시)
+     * create: 멤버 이상 + 본인 단체의 예약만 (admin은 모든 단체)
+     * update/delete: 작성자 본인 + 멤버 이상, 또는 단체 매니저, 또는 admin */
+    match /reservations/{resId} {
+      allow read: if isSignedIn();
+      allow create: if isMember()
+                    && request.resource.data.creatorUid == request.auth.uid
+                    && (request.resource.data.orgId == userOrgId() || isAdmin())
+                    && request.resource.data.keys().hasAll(['orgId', 'semanticHash', 'isVoiceBooked', 'stitchSourceId', 'lockKeys']);
+      allow update: if canManageReservationData(resource.data)
+                    && request.resource.data.creatorUid == resource.data.creatorUid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && (isAdmin()
+                        || request.resource.data.orgId == resource.data.orgId);
+      allow delete: if canManageReservationData(resource.data);
+    }
+
+    /* reservation_locks — room/date/start slot 단위 원자적 예약 충돌 방지 */
+    match /reservation_locks/{lockId} {
+      allow read: if isSignedIn();
+      allow create: if isMember()
+                    && (request.resource.data.creatorUid == request.auth.uid
+                        || isManagerOf(request.resource.data.orgId)
+                        || isAdmin())
+                    && (request.resource.data.orgId == userOrgId() || isAdmin())
+                    && request.resource.data.keys().hasAll(['reservationId', 'room', 'date', 'startTime', 'endTime', 'orgId', 'creatorUid']);
+      allow update: if false;
+      allow delete: if isSignedIn()
+                    && (resource.data.creatorUid == request.auth.uid
+                        || isManagerOf(resource.data.orgId)
+                        || isAdmin());
+    }
+
+    /* meeting_minutes — 민감 회의록은 동일 orgId 또는 admin만 접근 */
+    match /meeting_minutes/{minutesId} {
+      allow read: if isSignedIn() && isMemberOf(resource.data.orgId);
+      allow create: if isMember()
+                    && request.resource.data.creatorUid == request.auth.uid
+                    && (request.resource.data.orgId == userOrgId() || isAdmin())
+                    && request.resource.data.keys().hasAll([
+                      'orgId',
+                      'creatorUid',
+                      'rawTranscript',
+                      'aiSummary',
+                      'security',
+                      'archivePolicy'
+                    ]);
+      allow update, delete: if isSignedIn()
+                            && (resource.data.creatorUid == request.auth.uid
+                                || isManagerOf(resource.data.orgId)
+                                || isAdmin());
+    }
+
+    /* members — 단체별 멤버 명부 (화자 보정용 — auth users와 별도)
+     * read: 인증 사용자
+     * create: 멤버 이상
+     * update/delete: 생성자 본인 또는 단체 매니저/admin */
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+      allow create: if isMember()
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isSignedIn()
+                            && (resource.data.createdBy == request.auth.uid
+                                || isManagerOf(resource.data.orgId)
+                                || isAdmin());
+    }
+  }
+}

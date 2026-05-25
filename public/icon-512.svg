@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="wsBg" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#5EB1E5"/>
+      <stop offset="50%" stop-color="#3F8FD1"/>
+      <stop offset="100%" stop-color="#1E6BB8"/>
+    </linearGradient>
+    <radialGradient id="wsHighlight" cx="35%" cy="25%" r="45%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.25)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+  <!-- 원형 배경 -->
+  <circle cx="256" cy="256" r="248" fill="url(#wsBg)"/>
+  <circle cx="256" cy="256" r="248" fill="url(#wsHighlight)"/>
+  <!-- 상단 라인 (헤어밴드/스카프) -->
+  <path d="M 90 175 Q 256 90 422 175" stroke="#FFFFFF" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <!-- 두 점 (눈) -->
+  <circle cx="312" cy="155" r="11" fill="#FFFFFF"/>
+  <circle cx="358" cy="155" r="11" fill="#FFFFFF"/>
+  <!-- W 형태 (왼쪽) -->
+  <path d="M 145 245 L 175 365 L 205 280 L 235 365 L 265 245"
+        stroke="#FFFFFF" stroke-width="22" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- S 형태 (오른쪽, 곡선 스크립트 스타일) -->
+  <path d="M 370 260
+           Q 320 240 305 290
+           Q 295 330 345 340
+           Q 395 350 380 395
+           Q 365 425 315 405"
+        stroke="#FFFFFF" stroke-width="22" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

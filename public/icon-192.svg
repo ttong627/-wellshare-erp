@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="wsBg" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#5EB1E5"/>
+      <stop offset="50%" stop-color="#3F8FD1"/>
+      <stop offset="100%" stop-color="#1E6BB8"/>
+    </linearGradient>
+    <radialGradient id="wsHighlight" cx="35%" cy="25%" r="45%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.25)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+  </defs>
+  <circle cx="96" cy="96" r="92" fill="url(#wsBg)"/>
+  <circle cx="96" cy="96" r="92" fill="url(#wsHighlight)"/>
+  <path d="M 34 65 Q 96 34 158 65" stroke="#FFFFFF" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+  <circle cx="117" cy="58" r="4.2" fill="#FFFFFF"/>
+  <circle cx="134" cy="58" r="4.2" fill="#FFFFFF"/>
+  <path d="M 54 92 L 65 137 L 76 105 L 87 137 L 98 92"
+        stroke="#FFFFFF" stroke-width="8.5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 139 98
+           Q 120 90 114 109
+           Q 110 125 129 129
+           Q 148 133 142 150
+           Q 137 161 118 152"
+        stroke="#FFFFFF" stroke-width="8.5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

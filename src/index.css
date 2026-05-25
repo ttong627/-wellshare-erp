@@ -1,0 +1,224 @@
+/* Pretendard (한국어 표준 프리미엄 폰트) + Outfit (영문 디스플레이) + Noto Sans KR fallback */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* 프리미엄 웜베이지 디자인 시스템 토큰 */
+  --bg-canvas: #F7F4EF;
+  --bg-card: #FFFFFF;
+  --bg-code: #EFECE6;
+  
+  --color-text-main: #3C332A;
+  --color-text-muted: #7E7265;
+  --color-text-dark: #1E1710;
+  
+  --color-primary: #B19470;
+  --color-primary-hover: #9E815D;
+  --color-primary-light: rgba(177, 148, 112, 0.1);
+  --color-primary-border: rgba(177, 148, 112, 0.3);
+  
+  --color-accent: #E2C799;
+  
+  /* 상태 색상 - 웜 톤과 조화되는 채도 낮은 파스텔 */
+  --color-success: #708A81;
+  --color-success-bg: rgba(112, 138, 129, 0.1);
+  --color-info: #6A85B6;
+  --color-info-bg: rgba(106, 133, 182, 0.1);
+  --color-warning: #C97A53;
+  --color-warning-bg: rgba(201, 122, 83, 0.1);
+  
+  --border-card: 1px solid rgba(60, 51, 42, 0.08);
+  --border-card-hover: 1px solid rgba(177, 148, 112, 0.3);
+  
+  /* Supanova 이중 레이어 그림자 — 부드러운 표면 + 따뜻한 부유감 */
+  --shadow-sm: 0 1px 3px rgba(30, 23, 16, 0.05), 0 4px 12px rgba(30, 23, 16, 0.03);
+  --shadow-md: 0 2px 6px rgba(30, 23, 16, 0.04), 0 12px 32px rgba(30, 23, 16, 0.05);
+  --shadow-lg: 0 4px 12px rgba(30, 23, 16, 0.06), 0 20px 56px rgba(30, 23, 16, 0.09);
+
+  /* Pretendard 우선 — 한국어 프리미엄 표준. Outfit는 영문/숫자에 자동 폴백 */
+  --font-sans: 'Pretendard Variable', Pretendard, 'Outfit', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+  color-scheme: light;
+}
+
+/* Warm Beige Dark — 야간 사용자용 (시드 컬러 채도 유지, 명도만 반전) */
+[data-theme="dark"] {
+  --bg-canvas: #14110D;
+  --bg-card: #1F1B16;
+  --bg-code: #2A241D;
+
+  --color-text-main: #E8DFD2;
+  --color-text-muted: #9B8F7E;
+  --color-text-dark: #F5EFE4;
+
+  --color-primary: #C9A878;
+  --color-primary-hover: #D9B98A;
+  --color-primary-light: rgba(201, 168, 120, 0.12);
+  --color-primary-border: rgba(201, 168, 120, 0.28);
+
+  --color-accent: #E8C99E;
+
+  --color-success: #8BA89C;
+  --color-success-bg: rgba(139, 168, 156, 0.14);
+  --color-info: #8AA3D0;
+  --color-info-bg: rgba(138, 163, 208, 0.14);
+  --color-warning: #DB8E68;
+  --color-warning-bg: rgba(219, 142, 104, 0.14);
+
+  --border-card: 1px solid rgba(232, 223, 210, 0.08);
+  --border-card-hover: 1px solid rgba(201, 168, 120, 0.3);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.45), 0 12px 32px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.5), 0 20px 56px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* 한국어 단어가 중간에서 끊기는 것을 막음 (Supanova 한국어 표준) */
+  word-break: keep-all;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--color-text-main);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh; /* iOS Safari 하단 잘림 방지 (Supanova 권장) */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 프리미엄 타이포그래피 — 헤딩 외톨이 단어 자동 정리 */
+h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+h3 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--color-text-dark);
+  text-wrap: balance;
+}
+
+p {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+/* 숫자/시간 컬럼 정렬 — Supanova 권장 (.msd-day, .chip-day, .mbc-time 등) */
+.msd-day, .chip-day, .chip-month, .mbc-time,
+.calendar-day .day-number, .month-cell-day,
+time, .tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 모든 인터랙티브 요소에 active 피드백 — 터치 햅틱 시각 보강 (CLAUDE.md §13-⑤) */
+button:active:not(:disabled),
+a:active,
+.date-chip:active,
+.mobile-booking-card:active,
+.meeting-action-card:active:not(:disabled) {
+  transform: scale(0.98);
+  transition: transform 0.08s ease-out;
+}
+
+/* 스크롤바 디자인 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-canvas);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* 공통 애니메이션 정의 */
+@keyframes pulseWave {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 전역 유틸리티 클래스 */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--border-card);
+  border-radius: 16px;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

@@ -1,0 +1,14 @@
+.gcloudignore
+.git
+.gitignore
+node_modules
+dist
+.firebase
+firebase-debug.log
+*.log
+.DS_Store
+.vscode
+.idea
+twa
+android
+*.keystore
