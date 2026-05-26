@@ -10,6 +10,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut as fbSignOut,
   onAuthStateChanged,
@@ -52,9 +54,32 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+/* ─── 브라우저 환경 감지 ───────────────────────────────────────────────────
+ * Google OAuth 정책: 인앱 WebView(카카오·네이버·인스타 등)에서는
+ * signInWithPopup / signInWithRedirect 모두 403 disallowed_useragent 차단.
+ * 실제 모바일 브라우저(Chrome/Safari)에서는 redirect만 허용. */
+
+/** 인앱 WebView 여부 — Google OAuth 사용 불가 환경 */
+export function isWebView() {
+  const ua = navigator.userAgent || '';
+  if (/KAKAOTALK|NAVER|Line\/|FB_IAB|FBIOS|Instagram|Snapchat|Pinterest|Twitter\//i.test(ua)) return true;
+  // Android에서 Chrome 미포함 = WebView
+  if (/Android/i.test(ua) && !/Chrome\/\d+/.test(ua)) return true;
+  // iOS에서 Safari 미포함 (WebKit만 있는 WebView)
+  if (/iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari\//i.test(ua)) return true;
+  return false;
+}
+
+/** 실제 모바일 브라우저 여부 (WebView 제외) — signInWithRedirect 사용 */
+export function isMobileBrowser() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') && !isWebView();
+}
+
 /* 인증 초기화 — 콜백에 firebase user 전달 (익명 또는 실명).
- * autoAnonymous=true(기본)이면 로그인 안 된 상태에서 자동 익명 로그인 */
+ * autoAnonymous=true(기본)이면 로그인 안 된 상태에서 자동 익명 로그인.
+ * 모바일 redirect 결과를 먼저 처리한 뒤 onAuthStateChanged 구독 시작. */
 export function initAuth(onUser, { autoAnonymous = true } = {}) {
+  getRedirectResult(auth).catch(() => {/* redirect 결과 없음 — 무시 */});
   onAuthStateChanged(auth, (user) => {
     if (user) onUser(user);
     else if (autoAnonymous) signInAnonymously(auth).catch((err) => console.error('Anonymous sign-in failed:', err));
@@ -89,9 +114,21 @@ export async function resendEmailVerification(user) {
   return await fbSendEmailVerify(user);
 }
 
-/* Google 로그인 — 단, Google IDP가 콘솔에서 활성화되어 있어야 함 */
+/* Google 로그인
+ * WebView(카카오·네이버 등): auth/webview-blocked 에러 throw → UI에서 외부 브라우저 유도
+ * 실제 모바일 브라우저: signInWithRedirect → 페이지 reload 후 initAuth에서 처리
+ * 데스크톱: signInWithPopup */
 export async function signInWithGoogle() {
+  if (isWebView()) {
+    const err = new Error('인앱 브라우저에서는 Google 로그인을 사용할 수 없습니다.');
+    err.code = 'auth/webview-blocked';
+    throw err;
+  }
   const provider = new GoogleAuthProvider();
+  if (isMobileBrowser()) {
+    await signInWithRedirect(auth, provider);
+    return null; // 페이지가 Google로 이동 → 복귀 시 initAuth가 처리
+  }
   return await signInWithPopup(auth, provider);
 }
 

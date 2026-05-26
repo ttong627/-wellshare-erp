@@ -1,12 +1,30 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, sendPasswordReset } from '../firebase.js';
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, sendPasswordReset, isWebView } from '../firebase.js';
+
+const SITE_URL = 'https://wellshare-erp.web.app';
+
+function openInExternalBrowser() {
+  const ua = navigator.userAgent || '';
+  const target = window.location.href || SITE_URL;
+  if (/Android/i.test(ua)) {
+    // Android: Intent URL로 Chrome 강제 실행
+    const host = window.location.host;
+    const path = window.location.pathname + window.location.search + window.location.hash;
+    window.location.href = `intent://${host}${path}#Intent;scheme=https;package=com.android.chrome;end`;
+  } else {
+    // iOS: 클립보드에 URL 복사 후 안내
+    navigator.clipboard?.writeText(target).catch(() => {});
+    alert(`Safari 주소창에 아래 URL을 붙여넣기 하세요:\n${target}`);
+  }
+}
 
 export function LoginModal({ mode, onSwitchMode, onClose, onSuccess, onError }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [webViewBlocked, setWebViewBlocked] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,10 +45,17 @@ export function LoginModal({ mode, onSwitchMode, onClose, onSuccess, onError }) 
   };
 
   const handleGoogle = async () => {
+    // WebView 감지 — Google OAuth 차단 환경
+    if (isWebView()) {
+      setWebViewBlocked(true);
+      return;
+    }
     setSubmitting(true);
     try {
-      await signInWithGoogle();
-      onSuccess();
+      const result = await signInWithGoogle();
+      // result === null → 모바일 redirect (페이지 이동, initAuth가 재진입 시 처리)
+      // result !== null → 데스크톱 popup 성공
+      if (result) onSuccess();
     } catch (err) {
       const msg = err.code === 'auth/popup-closed-by-user' ? '로그인 창이 닫혔습니다.'
         : err.code === 'auth/operation-not-allowed' ? 'Google 로그인이 콘솔에서 활성화되지 않았습니다. (Firebase Console → Authentication → Sign-in method → Google → 사용)'
@@ -40,6 +65,50 @@ export function LoginModal({ mode, onSwitchMode, onClose, onSuccess, onError }) 
       setSubmitting(false);
     }
   };
+
+  // WebView 차단 안내 화면
+  if (webViewBlocked) {
+    const isAndroid = /Android/i.test(navigator.userAgent || '');
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content auth-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', padding: 28 }}>
+          <button type="button" className="btn-icon flex-center" onClick={onClose}
+            style={{ position: 'absolute', top: 16, right: 16 }}>
+            <X size={14} />
+          </button>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🌐</div>
+          <h3 style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 8 }}>
+            외부 브라우저에서 열어주세요
+          </h3>
+          <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
+            카카오톡·네이버 등 인앱 브라우저에서는<br />
+            Google 로그인 정책으로 인해 접근이 차단됩니다.<br />
+            {isAndroid ? 'Chrome' : 'Safari'}에서 열면 정상 로그인됩니다.
+          </p>
+          <button
+            type="button"
+            className="google-signin-btn"
+            onClick={openInExternalBrowser}
+            style={{ marginBottom: 10 }}
+          >
+            {isAndroid ? '🟢 Chrome에서 열기' : '🔵 Safari에서 URL 복사'}
+          </button>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
+            {SITE_URL}
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <strong style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+              또는 이메일/비밀번호로 로그인하세요 ↓
+            </strong>
+          </div>
+          <button type="button" className="btn-secondary" style={{ marginTop: 10, width: '100%' }}
+            onClick={() => setWebViewBlocked(false)}>
+            이메일로 로그인
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
