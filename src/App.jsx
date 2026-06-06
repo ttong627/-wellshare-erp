@@ -88,8 +88,18 @@ const WARM_PASTEL_PALETTE = [
   { color: '#7BA89E', lightColor: '#E5EEEB', label: 'Sea Mist' }
 ];
 
-/* 오늘 날짜 기본값 — useState 초기값에서 참조 가능하도록 모듈 스코프 */
-const TODAY = '2026-05-23';
+/* 오늘 날짜 기본값 — 실제 시스템 날짜(로컬 타임존) 기준. useState 초기값에서 참조 가능하도록 모듈 스코프 */
+const _todayDate = new Date();
+const _pad2 = (n) => String(n).padStart(2, '0');
+const TODAY = `${_todayDate.getFullYear()}-${_pad2(_todayDate.getMonth() + 1)}-${_pad2(_todayDate.getDate())}`;
+const TODAY_YEAR = _todayDate.getFullYear();
+const TODAY_MONTH = _todayDate.getMonth() + 1; // 1-indexed
+/* 주간 캘린더 기준 일요일 — '오늘이 속한 주'의 일요일. weekOffset 0 = 오늘이 포함된 주 */
+const BASE_SUNDAY = (() => {
+  const d = new Date(_todayDate.getFullYear(), _todayDate.getMonth(), _todayDate.getDate());
+  d.setDate(d.getDate() - d.getDay()); // 일요일로 되돌림
+  return d;
+})();
 
 
 
@@ -184,7 +194,7 @@ function groupBy(list, keyFn) {
 }
 
 function presetRange(preset) {
-  const today = new Date('2026-05-23');
+  const today = new Date(TODAY_YEAR, TODAY_MONTH - 1, _todayDate.getDate());
   const yyyy = today.getFullYear();
   const mm = today.getMonth() + 1;
   const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -462,6 +472,35 @@ export default function App({ entry = 'web' }) {
     setInstallPrompt(null);
   };
 
+  /* ---- 신규: 모바일 '홈 화면에 바로가기 추가' (iOS Safari 폴백 포함) ----
+   * - installPrompt 있으면 네이티브 설치(아이콘 자동 적용)
+   * - 없으면(iOS 등) 수동 안내 모달 노출
+   * - 이미 standalone(설치 후 실행)이면 버튼 자체를 숨김 */
+  const [isStandalone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia?.('(display-mode: standalone)').matches === true
+      || window.navigator?.standalone === true;
+  });
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const handleAddToHome = async () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(15);
+    if (installPrompt) {
+      await handleInstall();
+    } else {
+      setShowInstallGuide(true);
+    }
+  };
+  const installCtaMobile = isStandalone ? null : (
+    <button type="button" className="mobile-install-cta" onClick={handleAddToHome}>
+      <img src="/icon-192.png" alt="WS 앱 아이콘" className="mic-icon" />
+      <span className="mic-text">
+        <strong>홈 화면에 바로가기 추가</strong>
+        <small>{installPrompt ? '한 번 탭하면 앱처럼 설치돼요' : '공유 → "홈 화면에 추가"로 등록'}</small>
+      </span>
+      <span className="mic-badge"><Plus size={16} /></span>
+    </button>
+  );
+
   /* ---- i18n locale (N) — 한/영 자동 감지 + localStorage 저장 ---- */
   const [locale, setLocale] = useState(detectLocale);
   useEffect(() => { localStorage.setItem('ws-locale', locale); }, [locale]);
@@ -515,7 +554,7 @@ export default function App({ entry = 'web' }) {
   /* ---- 기본 상태 ---- */
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newDate, setNewDate] = useState('2026-05-22');
+  const [newDate, setNewDate] = useState(TODAY);
   const [newStart, setNewStart] = useState('14:00');
   const [newEnd, setNewEnd] = useState('16:00');
   const [newRoom, setNewRoom] = useState('회의실');
@@ -645,11 +684,14 @@ export default function App({ entry = 'web' }) {
   /* ---- 신규: 점유율 대시보드 표시 ---- */
   const [showOrgDashboard, setShowOrgDashboard] = useState(false);
 
+  /* ---- 신규: 전체 예약 큰 달력 (한 장 보기) ---- */
+  const [bigCalendarOpen, setBigCalendarOpen] = useState(false);
+
   /* ---- 신규: 사용 현황 리포트 ---- */
   const [reportOpen, setReportOpen] = useState(false);
   const [reportPreset, setReportPreset] = useState('thisMonth');
-  const [reportStartDate, setReportStartDate] = useState('2026-05-01');
-  const [reportEndDate, setReportEndDate] = useState('2026-05-31');
+  const [reportStartDate, setReportStartDate] = useState(() => presetRange('thisMonth').startDate);
+  const [reportEndDate, setReportEndDate] = useState(() => presetRange('thisMonth').endDate);
   const [reportOrgFilter, setReportOrgFilter] = useState('all');
   const [reportRoomFilter, setReportRoomFilter] = useState('all');
 
@@ -823,8 +865,8 @@ export default function App({ entry = 'web' }) {
 
   /* ---- 신규: 달력 뷰 모드 + 빠른 점프 + 방별 필터 ---- */
   const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
-  const [calendarYear, setCalendarYear] = useState(2026);
-  const [calendarMonth, setCalendarMonth] = useState(5); // 1-indexed
+  const [calendarYear, setCalendarYear] = useState(TODAY_YEAR);
+  const [calendarMonth, setCalendarMonth] = useState(TODAY_MONTH); // 1-indexed
   const [roomFilter, setRoomFilter] = useState('all'); // 'all' | '회의실' | '교육장'
 
   const transcriptEndRef = useRef(null);
@@ -996,7 +1038,7 @@ export default function App({ entry = 'web' }) {
    * (swipe로 주간 이동했을 때 헤더 월 표시가 어긋나는 문제 해결) */
   useEffect(() => {
     if (viewMode !== 'week') return;
-    const base = new Date('2026-05-17');
+    const base = new Date(BASE_SUNDAY);
     base.setDate(base.getDate() + weekOffset * 7 + 3); // 그 주 수요일
     setCalendarYear(base.getFullYear());
     setCalendarMonth(base.getMonth() + 1);
@@ -1008,14 +1050,14 @@ export default function App({ entry = 'web' }) {
     // 그 달의 1일이 속한 주의 일요일 찾기
     const sunday = new Date(target);
     sunday.setDate(target.getDate() - target.getDay());
-    const baseSunday = new Date('2026-05-17');
+    const baseSunday = new Date(BASE_SUNDAY);
     const diffDays = Math.round((sunday - baseSunday) / 86400000);
     setWeekOffset(Math.floor(diffDays / 7));
   };
 
   /* 캘린더 7일 (일요일 시작 — 일반 달력) */
   const calendarDays = useMemo(() => {
-    const base = new Date('2026-05-17'); // 일요일
+    const base = new Date(BASE_SUNDAY); // 일요일
     base.setDate(base.getDate() + weekOffset * 7);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(base);
@@ -3213,6 +3255,16 @@ export default function App({ entry = 'web' }) {
 
           <button
             className="header-action-btn"
+            onClick={() => setBigCalendarOpen(true)}
+            title="전체 예약을 큰 달력 한 장으로 보기"
+            style={{ background: 'var(--color-primary-light, #E2ECE9)' }}
+          >
+            <CalendarIcon size={14} color="var(--color-primary)" />
+            <span>전체 달력</span>
+          </button>
+
+          <button
+            className="header-action-btn"
             onClick={() => setShowOrgDashboard(true)}
             title="단체별 예약통계 대시보드"
           >
@@ -3442,6 +3494,7 @@ export default function App({ entry = 'web' }) {
         {/* ===== [분기] /notes 라우트 모바일 회의록 작성 마법사 독립 노출 ===== */}
         {entry === 'm-minutes' ? (
           <div className="mobile-meeting-view" style={{ width: '100%', maxWidth: '640px', margin: '0 auto', padding: '16px', display: 'block' }}>
+            {installCtaMobile}
             {/* 진행 단계 표시 */}
             {/* 회의록 작성 hero — 첫 단계에서만 노출 */}
             {mobileStep === 1 && (
@@ -3802,7 +3855,7 @@ export default function App({ entry = 'web' }) {
                 <button className="btn-secondary" onClick={() => setVoiceBookingOpen(true)} title="음성 명령 예약 (미연 추천)">
                   <Mic size={14} /> 음성 예약
                 </button>
-                <button className="btn-primary" onClick={() => openReservationCreateModal('2026-05-22')}>
+                <button className="btn-primary" onClick={() => openReservationCreateModal(TODAY)}>
                   <Plus size={16} /> 예약하기
                 </button>
               </div>
@@ -3924,6 +3977,7 @@ export default function App({ entry = 'web' }) {
             {/* ===== 모바일 날짜 스트립 (오늘 가운데 + 좌우 스와이프) — /m 라우트용 ===== */}
             {entry === 'm-book' && (
               <div className="mobile-booking-view">
+                {installCtaMobile}
                 <div className="mobile-selected-date-header">
                   {(() => {
                     const sel = dateStripDates.find(d => d.fullDate === mobileSelectedDate);
@@ -4104,7 +4158,7 @@ export default function App({ entry = 'web' }) {
                           if (viewMode === 'week') jumpToYearMonth(y, calendarMonth);
                         }}
                       >
-                        {[2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}년</option>)}
+                        {[TODAY_YEAR - 1, TODAY_YEAR, TODAY_YEAR + 1, TODAY_YEAR + 2].map(y => <option key={y} value={y}>{y}년</option>)}
                       </select>
                       <select
                         className="cal-jump-select"
@@ -4122,7 +4176,7 @@ export default function App({ entry = 'web' }) {
                       <button
                         className="btn-secondary"
                         style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                        onClick={() => { setCalendarYear(2026); setCalendarMonth(5); setWeekOffset(0); }}
+                        onClick={() => { setCalendarYear(TODAY_YEAR); setCalendarMonth(TODAY_MONTH); setWeekOffset(0); }}
                         title="오늘로 이동"
                       >오늘</button>
                     </div>
@@ -4149,12 +4203,10 @@ export default function App({ entry = 'web' }) {
                         <button className={viewMode === 'month' ? 'active' : ''} onClick={() => setViewMode('month')}>월간</button>
                       </div>
 
-                      {viewMode === 'week' && (
-                        <div className="calendar-nav-buttons">
-                          <button className="btn-icon flex-center" onClick={() => handleWeekChange(-1)} title="이전 주"><ChevronLeft size={16} /></button>
-                          <button className="btn-icon flex-center" onClick={() => handleWeekChange(1)} title="다음 주"><ChevronRight size={16} /></button>
-                        </div>
-                      )}
+                      <div className="calendar-nav-buttons">
+                        <button className="btn-icon flex-center" onClick={() => viewMode === 'week' ? handleWeekChange(-1) : handleMonthChange(-1)} title={viewMode === 'week' ? '이전 주' : '이전 달'}><ChevronLeft size={16} /></button>
+                        <button className="btn-icon flex-center" onClick={() => viewMode === 'week' ? handleWeekChange(1) : handleMonthChange(1)} title={viewMode === 'week' ? '다음 주' : '다음 달'}><ChevronRight size={16} /></button>
+                      </div>
                     </div>
                   </div>
 
@@ -4281,12 +4333,12 @@ export default function App({ entry = 'web' }) {
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--bg-canvas)', paddingBottom: '8px' }}>
                     <Clock size={18} color="var(--color-primary)" /> 오늘 예약 목록
                   </h3>
-                  {allReservations.filter(r => r.date === '2026-05-22').length === 0 && (
+                  {allReservations.filter(r => r.date === TODAY).length === 0 && (
                     <p style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
                       오늘 예약된 일정이 없습니다. 빈 시간 슬롯을 드래그하거나 날짜 숫자를 클릭해 예약하세요.
                     </p>
                   )}
-                  {allReservations.filter(r => r.date === '2026-05-22').map(res => {
+                  {allReservations.filter(r => r.date === TODAY).map(res => {
                     const org = orgs.find(o => o.id === res.orgId);
                     return (
                       <div key={res.id} className={`reservation-card ${res.isOfflinePending ? 'offline-pending-card' : ''}`}>
@@ -4516,6 +4568,155 @@ export default function App({ entry = 'web' }) {
       )}
 
       {/* ===== 단체별 점유율 대시보드 (빌 추천 기능 ⑥) ===== */}
+      {/* ===== 전체 예약 큰 달력 (한 장 보기) — 월 전체를 풀스크린 그리드로 ===== */}
+      {bigCalendarOpen && (
+        <div className="modal-overlay big-cal-overlay" onClick={() => setBigCalendarOpen(false)}>
+          <div className="big-cal-content" onClick={e => e.stopPropagation()}>
+            <div className="big-cal-header">
+              <div className="big-cal-title">
+                <CalendarIcon size={20} color="var(--color-primary)" />
+                <h3>전체 예약 달력</h3>
+              </div>
+
+              <div className="big-cal-nav">
+                <button
+                  className="btn-icon flex-center"
+                  title="이전 달"
+                  onClick={() => handleMonthChange(-1)}
+                ><ChevronLeft size={18} /></button>
+                <span className="big-cal-ym">{calendarYear}년 {calendarMonth}월</span>
+                <button
+                  className="btn-icon flex-center"
+                  title="다음 달"
+                  onClick={() => handleMonthChange(1)}
+                ><ChevronRight size={18} /></button>
+                <button
+                  className="btn-secondary big-cal-today"
+                  onClick={() => { setCalendarYear(TODAY_YEAR); setCalendarMonth(TODAY_MONTH); }}
+                  title="오늘이 있는 달로"
+                >오늘</button>
+              </div>
+
+              <div className="big-cal-actions">
+                <div className="room-filter-tabs">
+                  {[{ key: 'all', label: '전체' }, { key: '회의실', label: '회의실' }, { key: '교육장', label: '교육장' }].map(rf => (
+                    <button
+                      key={rf.key}
+                      className={`room-filter-tab ${roomFilter === rf.key ? 'active' : ''}`}
+                      onClick={() => setRoomFilter(rf.key)}
+                    >{rf.label}</button>
+                  ))}
+                </div>
+                <button className="btn-icon flex-center" onClick={() => setBigCalendarOpen(false)} title="닫기 (Esc)"><X size={16} /></button>
+              </div>
+            </div>
+
+            {/* 단체 컬러 범례 */}
+            <div className="big-cal-legend">
+              {orgs.map(o => (
+                <span key={o.id} className="bcl-chip" style={{ background: o.lightColor, color: o.color }}>
+                  <span className="bcl-dot" style={{ background: o.color }} />{o.name}
+                </span>
+              ))}
+            </div>
+
+            {/* 요일 헤더 */}
+            <div className="big-cal-weekdays">
+              {['일', '월', '화', '수', '목', '금', '토'].map((w, i) => (
+                <div key={w} className={`bcw ${i === 0 ? 'sun' : i === 6 ? 'sat' : ''}`}>{w}</div>
+              ))}
+            </div>
+
+            {/* 월간 그리드 — 한 달 전체 한눈에 */}
+            <div className="big-cal-grid">
+              {monthDays.map((dayObj, idx) => {
+                const dayRes = filteredReservations
+                  .filter(r => r.date === dayObj.fullDate)
+                  .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+                const wi = idx % 7;
+                return (
+                  <div
+                    key={dayObj.fullDate + idx}
+                    className={`big-cal-cell ${dayObj.isToday ? 'today' : ''} ${!dayObj.inMonth ? 'out' : ''} ${wi === 0 ? 'sun' : wi === 6 ? 'sat' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="bcc-daynum"
+                      onClick={() => { setBigCalendarOpen(false); openReservationCreateModal(dayObj.fullDate); }}
+                      title="이 날짜로 예약 폼 열기"
+                    >
+                      <span>{dayObj.day}</span>
+                      {dayRes.length > 0 && <span className="bcc-count">{dayRes.length}</span>}
+                    </button>
+                    <div className="bcc-events">
+                      {dayRes.slice(0, 6).map(res => {
+                        const org = orgs.find(o => o.id === res.orgId) || currentOrg;
+                        return (
+                          <button
+                            type="button"
+                            key={res.id}
+                            className="bcc-event"
+                            style={{ background: org.lightColor, color: org.color, borderLeftColor: org.color }}
+                            onClick={() => { if (canManageReservation(res)) { setBigCalendarOpen(false); openReservationEditModal(res); } }}
+                            title={`[${org.name}] ${res.title}\n📍 ${res.room}\n🕐 ${res.startTime} - ${res.endTime}\n👤 ${res.creatorName || '익명'}`}
+                          >
+                            <span className="bcc-ev-time">{res.startTime}</span>
+                            <span className="bcc-ev-title">{res.title}</span>
+                          </button>
+                        );
+                      })}
+                      {dayRes.length > 6 && (
+                        <button
+                          type="button"
+                          className="bcc-more"
+                          onClick={() => { setBigCalendarOpen(false); openReservationCreateModal(dayObj.fullDate); }}
+                        >+{dayRes.length - 6}건 더</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="big-cal-hint">
+              💡 <strong>날짜 숫자</strong>를 누르면 그 날로 예약 폼이 열리고, <strong>예약 막대</strong>를 누르면 상세/수정으로 이동합니다. 좌우 화살표로 달 이동 · 방 필터로 회의실/교육장만 따로 보기.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 모바일 '홈 화면에 바로가기 추가' 수동 안내 (iOS/Android) ===== */}
+      {showInstallGuide && (
+        <div className="modal-overlay" onClick={() => setShowInstallGuide(false)}>
+          <div className="install-guide-content" onClick={e => e.stopPropagation()}>
+            <div className="ig-head">
+              <img src="/icon-192.png" alt="WS 앱 아이콘" className="ig-icon" />
+              <div className="ig-head-text">
+                <h3>홈 화면에 바로가기 추가</h3>
+                <p>설치하면 이 아이콘으로 앱처럼 빠르게 열 수 있어요.</p>
+              </div>
+              <button className="btn-icon flex-center" onClick={() => setShowInstallGuide(false)} title="닫기"><X size={16} /></button>
+            </div>
+            {(() => {
+              const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+              return isIOS ? (
+                <ol className="ig-steps">
+                  <li>화면 하단 <strong>공유 버튼</strong>(⬆️ 네모에 화살표)을 누르세요</li>
+                  <li>메뉴를 내려 <strong>‘홈 화면에 추가’</strong>를 선택하세요</li>
+                  <li>우측 상단 <strong>‘추가’</strong>를 누르면 완료! 🎉</li>
+                </ol>
+              ) : (
+                <ol className="ig-steps">
+                  <li>우측 상단 <strong>⋮ 메뉴</strong>를 누르세요</li>
+                  <li><strong>‘앱 설치’</strong> 또는 <strong>‘홈 화면에 추가’</strong>를 선택하세요</li>
+                  <li><strong>‘설치’</strong>를 누르면 완료! 🎉</li>
+                </ol>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {showOrgDashboard && (
         <div className="modal-overlay" onClick={() => setShowOrgDashboard(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>

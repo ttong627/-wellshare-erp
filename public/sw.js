@@ -3,16 +3,16 @@
  * - HTML: network-first (최신 버전 우선, 오프라인 시 캐시 fallback)
  * - 신호 복구 시 자동 Stitch 재전송 + 실패 시 사용자에게 postMessage 알림 */
 
-const CACHE_NAME = 'ws-v3';
+const CACHE_NAME = 'ws-v4';
 const DB_NAME = 'ws-offline-queue';
 const STORE_NAME = 'pending';
 const CORE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/favicon.svg',
-  '/icon-192.svg',
-  '/icon-512.svg'
+  '/favicon-48.png',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 /* ============================================================

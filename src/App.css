@@ -5308,3 +5308,257 @@ textarea:focus-visible,
 [data-theme="dark"] .skeleton {
   background: linear-gradient(90deg, var(--bg-canvas) 25%, rgba(201, 168, 120, 0.1) 50%, var(--bg-canvas) 75%);
 }
+
+/* ============================================================
+ *  전체 예약 큰 달력 (한 장 보기) — 풀스크린 월간 그리드
+ * ============================================================ */
+.big-cal-overlay {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+}
+.big-cal-content {
+  background: var(--bg-card);
+  width: 100%;
+  height: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px 14px;
+  overflow: hidden;
+}
+.big-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.big-cal-title { display: flex; align-items: center; gap: 8px; }
+.big-cal-title h3 { font-size: 1.3rem; font-weight: 800; color: var(--color-text-dark); }
+.big-cal-nav { display: flex; align-items: center; gap: 8px; }
+.big-cal-ym {
+  font-size: 1.15rem;
+  font-weight: 800;
+  min-width: 130px;
+  text-align: center;
+  color: var(--color-primary);
+}
+.big-cal-today { padding: 6px 14px; font-size: 0.8rem; }
+.big-cal-actions { display: flex; align-items: center; gap: 10px; }
+
+.big-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.bcl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.bcl-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+.big-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.bcw {
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 0;
+  color: var(--color-text-muted);
+}
+.bcw.sun { color: #D2696B; }
+.bcw.sat { color: #6A85B6; }
+
+.big-cal-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.big-cal-cell {
+  background: var(--bg-canvas);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 96px;
+  overflow: hidden;
+}
+.big-cal-cell.out { opacity: 0.4; }
+.big-cal-cell.today {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+  background: var(--color-primary-light);
+}
+.bcc-daynum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: var(--color-text-main);
+  transition: var(--transition-smooth);
+}
+.bcc-daynum:hover { background: var(--color-primary-light); color: var(--color-primary); }
+.big-cal-cell.sun .bcc-daynum { color: #D2696B; }
+.big-cal-cell.sat .bcc-daynum { color: #6A85B6; }
+.bcc-count {
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 6px;
+  min-width: 16px;
+  text-align: center;
+}
+.bcc-events {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.bcc-event {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-left: 3px solid;
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: var(--transition-smooth);
+}
+.bcc-event:hover { filter: brightness(0.96); transform: translateX(1px); }
+.bcc-ev-time { font-weight: 800; flex-shrink: 0; opacity: 0.85; }
+.bcc-ev-title { overflow: hidden; text-overflow: ellipsis; }
+.bcc-more {
+  background: transparent;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  text-align: left;
+}
+.bcc-more:hover { color: var(--color-primary); }
+.big-cal-hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .big-cal-cell { background: rgba(255, 255, 255, 0.03); }
+[data-theme="dark"] .big-cal-cell.today { background: rgba(201, 168, 120, 0.12); }
+
+@media (max-width: 768px) {
+  .big-cal-content { padding: 12px 10px; gap: 8px; }
+  .big-cal-header { gap: 8px; }
+  .big-cal-title h3 { font-size: 1.05rem; }
+  .big-cal-ym { font-size: 1rem; min-width: 92px; }
+  .big-cal-legend { display: none; }
+  .big-cal-grid { gap: 3px; }
+  .big-cal-cell { min-height: 60px; padding: 3px; border-radius: 7px; }
+  .bcc-daynum { font-size: 0.78rem; padding: 1px 2px; }
+  .bcc-event { font-size: 0.58rem; padding: 2px 3px; gap: 2px; }
+  .bcc-ev-time { display: none; }
+}
+
+/* ============================================================
+ *  모바일 '홈 화면에 바로가기 추가' CTA
+ * ============================================================ */
+.mobile-install-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: linear-gradient(135deg, var(--bg-card), var(--color-primary-light));
+  border: 1px solid var(--color-primary-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+  text-align: left;
+}
+.mobile-install-cta:active { transform: scale(0.985); }
+.mic-icon { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; }
+.mic-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.mic-text strong { font-size: 0.9rem; font-weight: 800; color: var(--color-text-dark); }
+.mic-text small { font-size: 0.72rem; color: var(--color-text-muted); }
+.mic-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+ *  설치 수동 안내 모달 (iOS / Android)
+ * ============================================================ */
+.install-guide-content {
+  background: var(--bg-card);
+  width: 90%;
+  max-width: 420px;
+  border-radius: 20px;
+  padding: 24px;
+  border: var(--border-card);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ig-head { display: flex; align-items: flex-start; gap: 12px; }
+.ig-icon { width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0; }
+.ig-head-text { flex: 1; min-width: 0; }
+.ig-head-text h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 2px; color: var(--color-text-dark); }
+.ig-head-text p { font-size: 0.8rem; color: var(--color-text-muted); }
+.ig-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 20px;
+  margin: 0;
+}
+.ig-steps li {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text-main);
+}
